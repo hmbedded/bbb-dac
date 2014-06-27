@@ -416,6 +416,14 @@
 				};
 			};
 
+            /* IQaudIO cape */
+            cape@17 {
+                part-number = "BB-IQAUDIO-DAC";
+                version@00A0 {
+                    version = "00A0";
+                    dtbo = "cape-boneblack-iqaudio-00A0.dtbo";
+                };
+            };
 		};
 	};
 
