@@ -50,6 +50,7 @@ struct pcm512x_priv {
 	int fmt;
 	int pll_in;
 	int pll_out;
+	int pll_lock;
 	int pll_r;
 	int pll_j;
 	int pll_d;
@@ -1157,24 +1158,26 @@ static int pcm512x_hw_params(struct snd_pcm_substream *substream,
 				ret, pcm512x->pll_out);
 			return ret;
 		}
+	}
 
-		gpio = PCM512x_G1OE << (4 - 1);
-		ret = regmap_update_bits(pcm512x->regmap, PCM512x_GPIO_EN,
-					 gpio, gpio);
-		if (ret != 0) {
-			dev_err(codec->dev, "Failed to enable gpio %d: %d\n",
-				4, ret);
-			return ret;
-		}
+	if (pcm512x->pll_lock) {
+                gpio = PCM512x_G1OE << (pcm512x->pll_lock - 1);
+                ret = regmap_update_bits(pcm512x->regmap, PCM512x_GPIO_EN,
+                                         gpio, gpio);
+                if (ret != 0) {
+                        dev_err(codec->dev, "Failed to enable gpio %d: %d\n",
+                                pcm512x->pll_lock, ret);
+                        return ret;
+                }
 
-		gpio = PCM512x_GPIO_OUTPUT_1 + 4 - 1;
-		ret = regmap_update_bits(pcm512x->regmap, gpio,
-					 PCM512x_GxSL, PCM512x_GxSL_PLLLK);
-		if (ret != 0) {
-			dev_err(codec->dev,
-				"Failed to output pll lock on %d: %d\n",
-				ret, 4);
-			return ret;
+                gpio = PCM512x_GPIO_OUTPUT_1 + pcm512x->pll_lock - 1;
+                ret = regmap_update_bits(pcm512x->regmap, gpio,
+                                         PCM512x_GxSL, PCM512x_GxSL_PLLLK);
+                if (ret != 0) {
+                        dev_err(codec->dev,
+                                "Failed to output pll lock on %d: %d\n",
+                                ret, pcm512x->pll_lock);
+                        return ret;
 		}
 	}
 
@@ -1379,6 +1382,16 @@ int pcm512x_probe(struct device *dev, struct regmap *regmap)
 			ret = -EINVAL;
 			goto err_clk;
 		}
+
+                if (of_property_read_u32(np, "pll-lock", &val) >= 0) {
+                        if (val > 6) {
+                                dev_err(dev, "Invalid pll-lock\n");
+                                ret = -EINVAL;
+                                goto err_clk;
+                        }
+                        pcm512x->pll_lock = val;
+                }
+
 	}
 #endif
 
